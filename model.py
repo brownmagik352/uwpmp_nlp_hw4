@@ -177,13 +177,13 @@ def attention_forward(config, inputs, scope=None):
         qq_rnn_tiled = tf.tile(qq_rnn_exp, [1, JX, 1, 1])
 
         weights = tf.get_variable(name="weights", shape=[3*d, 1])
-        bVar = tf.get_variable(name="bVar", shape=[3*d, 1])
+        bScalar = tf.get_variable(name="bScalar", shape=[])
         insideBrackets = tf.concat([xx_rnn_tiled, qq_rnn_tiled, tf.math.multiply(
             xx_rnn_tiled, qq_rnn_tiled)], axis=3)
         insideBracketsReshaped = tf.reshape(insideBrackets, [tf.shape(insideBrackets)[
             0] * tf.shape(insideBrackets)[1] * tf.shape(insideBrackets)[2], 3*d])
-        dotProductWithWeights = tf.matmul(insideBracketsReshaped, weights)
-        dotProductWithWeightsReshaped = tf.reshape(dotProductWithWeights, [tf.shape(insideBrackets)[
+        dotProductWithWeightsPlusScalar = tf.matmul(insideBracketsReshaped, weights) + bScalar
+        dotProductWithWeightsReshaped = tf.reshape(dotProductWithWeightsPlusScalar, [tf.shape(insideBrackets)[
             0], tf.shape(insideBrackets)[1], tf.shape(insideBrackets)[2]])
         p = tf.nn.softmax(dotProductWithWeightsReshaped, 2)
 
