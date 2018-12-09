@@ -70,8 +70,8 @@ def rnn_forward(config, inputs, scope=None):
 
             # run context embeddings through GRU
             dropout = 0.1
-            fw_cell = GRUCell(d)
-            bw_cell = GRUCell(d)
+            fw_cell = GRUCell(64)
+            bw_cell = GRUCell(64)
             if config.is_train:
                 fw_cell = DropoutWrapper(
                     fw_cell, output_keep_prob=(1.0 - dropout))
@@ -79,14 +79,15 @@ def rnn_forward(config, inputs, scope=None):
                     bw_cell, output_keep_prob=(1.0 - dropout))
             (output_fw, output_bw), _ = bidirectional_dynamic_rnn(
                 fw_cell, bw_cell, xx, dtype=tf.float32)
-            xx_rnn = tf.add(output_fw, output_bw)
+            xx_rnn_toobig = tf.concat([output_fw, output_bw], axis=2)
+            xx_rnn = tf.layers.dense(xx_rnn_toobig, 50, activation=None)
 
         with tf.variable_scope("question_rnn"):
 
             # run question embeddings through GRU
             dropout = 0.1
-            fw_cell2 = GRUCell(d)
-            bw_cell2 = GRUCell(d)
+            fw_cell2 = GRUCell(64)
+            bw_cell2 = GRUCell(64)
             if config.is_train:
                 fw_cell2 = DropoutWrapper(
                     fw_cell2, output_keep_prob=(1.0 - dropout))
@@ -94,7 +95,8 @@ def rnn_forward(config, inputs, scope=None):
                     bw_cell2, output_keep_prob=(1.0 - dropout))
             (output_fw2, output_bw2), _ = bidirectional_dynamic_rnn(
                 fw_cell2, bw_cell2, qq, dtype=tf.float32)
-            qq_rnn = tf.add(output_fw2, output_bw2)
+            qq_rnn_toobig = tf.concat([output_fw2, output_bw2], axis=2)
+            qq_rnn = tf.layers.dense(qq_rnn_toobig, 50, activation=None)
 
         # equation 1 (averaging)
         qq_avg = tf.reduce_mean(
@@ -143,8 +145,8 @@ def attention_forward(config, inputs, scope=None):
 
             # run context embeddings through GRU
             dropout = 0.1
-            fw_cell = GRUCell(d)
-            bw_cell = GRUCell(d)
+            fw_cell = GRUCell(64)
+            bw_cell = GRUCell(64)
             if config.is_train:
                 fw_cell = DropoutWrapper(
                     fw_cell, output_keep_prob=(1.0 - dropout))
@@ -152,14 +154,15 @@ def attention_forward(config, inputs, scope=None):
                     bw_cell, output_keep_prob=(1.0 - dropout))
             (output_fw, output_bw), _ = bidirectional_dynamic_rnn(
                 fw_cell, bw_cell, xx, dtype=tf.float32, sequence_length=x_len)
-            xx_rnn = tf.add(output_fw, output_bw)
+            xx_rnn_toobig = tf.concat([output_fw, output_bw], axis=2)
+            xx_rnn = tf.layers.dense(xx_rnn_toobig, 50, activation=None)
 
         with tf.variable_scope("question_rnn"):
 
             # run question embeddings through GRU
             dropout = 0.1
-            fw_cell2 = GRUCell(d)
-            bw_cell2 = GRUCell(d)
+            fw_cell2 = GRUCell(64)
+            bw_cell2 = GRUCell(64)
             if config.is_train:
                 fw_cell2 = DropoutWrapper(
                     fw_cell2, output_keep_prob=(1.0 - dropout))
@@ -167,7 +170,8 @@ def attention_forward(config, inputs, scope=None):
                     bw_cell2, output_keep_prob=(1.0 - dropout))
             (output_fw2, output_bw2), _ = bidirectional_dynamic_rnn(
                 fw_cell2, bw_cell2, qq, dtype=tf.float32, sequence_length=q_len)
-            qq_rnn = tf.add(output_fw2, output_bw2)
+            qq_rnn_toobig = tf.concat([output_fw2, output_bw2], axis=2)
+            qq_rnn = tf.layers.dense(qq_rnn_toobig, 50, activation=None)
 
         # equation 10
         # how can i point-wise multiply xx_rnn and qq_rnn given their different sizes?
@@ -182,7 +186,8 @@ def attention_forward(config, inputs, scope=None):
             xx_rnn_tiled, qq_rnn_tiled)], axis=3)
         insideBracketsReshaped = tf.reshape(insideBrackets, [tf.shape(insideBrackets)[
             0] * tf.shape(insideBrackets)[1] * tf.shape(insideBrackets)[2], 3*d])
-        dotProductWithWeightsPlusScalar = tf.matmul(insideBracketsReshaped, weights) + bScalar
+        dotProductWithWeightsPlusScalar = tf.matmul(
+            insideBracketsReshaped, weights) + bScalar
         dotProductWithWeightsReshaped = tf.reshape(dotProductWithWeightsPlusScalar, [tf.shape(insideBrackets)[
             0], tf.shape(insideBrackets)[1], tf.shape(insideBrackets)[2]])
         p = tf.nn.softmax(dotProductWithWeightsReshaped, 2)
